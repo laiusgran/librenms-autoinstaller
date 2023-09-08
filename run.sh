@@ -109,7 +109,7 @@ systemctl enable mariadb
 systemctl restart mariadb
 
 
-mysql -u root -p$rootpass -Bse "CREATE DATABASE librenms CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+mysql -Bse "CREATE DATABASE librenms CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 CREATE USER '$userdb'@'$netdb' IDENTIFIED BY '$passdb';
 GRANT ALL PRIVILEGES ON librenms.* TO '$userdb'@'$netdb'"
 
