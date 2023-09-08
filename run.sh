@@ -1,6 +1,4 @@
 #!/bin/bash
-echo Escreve a password do root para entrar na base de dados
-read rootpass
 
 echo Escreve a rede para aceder à base de dados, Exemplo: 192.168.34.%
 read netdb
@@ -117,10 +115,10 @@ GRANT ALL PRIVILEGES ON librenms.* TO '$userdb'@'$netdb'"
 
 echo "MariaDB configurada, a dar grep do resultado:"
 echo "User:"
-echo "$(mysql -u root -p$rootpass -Be "SELECT host, user FROM mysql.user;SHOW databases;")"
+echo "$(mysql -Be "SELECT host, user FROM mysql.user;SHOW databases;")"
 echo ""
 echo "Database:"
-echo "$(mysql -u root -p$rootpass -Be "SHOW databases;")"
+echo "$(mysql -Be "SHOW databases;")"
 echo "$(cat /etc/mysql/mariadb.conf.d/50-server.cnf | grep "innodb_file_per_table=1")"
 echo "$(cat /etc/mysql/mariadb.conf.d/50-server.cnf | grep "lower_case_table_names=0")"
 echo "$(cat /etc/mysql/mariadb.conf.d/50-server.cnf | grep $bindaddress)"
