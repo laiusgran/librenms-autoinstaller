@@ -1,0 +1,293 @@
+#!/bin/bash
+red='\033[0;31m'
+NC='\033[0m'
+timezone="date.timezone = Europe/Lisbon" 	#Change this to your zone
+portredis=6379					#If you use a differente port, configure it here.
+
+#THIS SCRIPT INSTALLS THE POLLER ROLE ON THIS MACHINE.
+#USE THE LIBRENMS CENTRAL SCRIPT TO CONFIGURE THE MASTER.
+
+echo -e "${NC}"
+echo -e "${red}Write database username. On LibreNMS Docs the default would be  librenms"
+echo -e "${NC}"
+read userdb
+echo -e "${NC}"
+echo -e "${red}Write the database password"
+echo -e "${NC}"
+read passdb
+echo -e "${NC}"
+echo -e "${red}Write LibreNMS Database Server IP"
+echo -e "${NC}"
+read addressdb
+echo -e "${NC}"
+echo -e "${red}Write REDIS Server IP"
+echo -e "${NC}"
+read addressredis
+echo -e "${NC}"
+echo -e "${red}Check .env and write after APP_KEY=base64:"
+echo -e "${NC}"
+read appkey
+echo -e "${NC}"
+echo -e "${red}Write Poller Group"
+echo -e "${NC}"
+read pollergroup
+echo -e "${NC}"
+echo -e "${red}Write SNMP Community"
+echo -e "${NC}"
+read snmpcommunity
+echo -e "${NC}"
+
+
+
+
+
+#apt install packages
+echo -e "${NC}"
+echo -e "${red}Updating and installing packages"
+echo -e "${NC}"
+
+apt update
+apt install acl curl fping git graphviz imagemagick mariadb-client mtr-tiny nmap php-cli php-curl php-fpm php-gd php-gmp php-json php-mbstring php-mysql php-snmp php-xml php-zip rrdtool snmp snmpd whois unzip python3-pymysql python3-dotenv python3-redis python3-setuptools python3-systemd python3-pip -y
+
+
+
+
+
+
+#add librenms user
+echo -e "${NC}"
+echo -e "${red}Adding and Installing LibreNMS..."
+echo -e "${NC}"
+
+useradd librenms -d /opt/librenms -M -r -s "$(which bash)"
+
+
+
+
+
+
+#install librenms through github
+cd /opt && git clone https://github.com/librenms/librenms.git
+
+echo -e "${NC}"
+echo -e "${red}User Librenms added and LibreNMS installed:"
+echo -e "${NC}"
+echo -e "${NC}$(ls /opt/ -alps | grep librenms)"
+echo -e "${NC}$(cat /etc/passwd | grep librenms)"
+echo -e "${NC}"
+
+
+
+
+
+
+#setting permissions
+echo -e "${NC}"
+echo -e "${red}Changing folder permissions"
+echo -e "${NC}"
+
+chown -R librenms:librenms /opt/librenms
+chmod 771 /opt/librenms
+setfacl -d -m g::rwx /opt/librenms/rrd /opt/librenms/logs /opt/librenms/bootstrap/cache/ /opt/librenms/storage/
+setfacl -R -m g::rwx /opt/librenms/rrd /opt/librenms/logs /opt/librenms/bootstrap/cache/ /opt/librenms/storage/
+
+echo -e "${NC}"
+echo -e "${red}Permissions changed, grepping the results:"
+echo -e "${NC}"
+echo -e "${NC}$(ls /opt/librenms)"
+echo -e "${NC}"
+
+
+
+
+
+
+#installing dependencies
+echo -e "${NC}"
+echo -e "${red}Installing dependencies"
+echo -e "${NC}"
+
+su - librenms -c './scripts/composer_wrapper.php install'
+wget https://getcomposer.org/composer-stable.phar
+mv composer-stable.phar /usr/bin/composer
+chmod +x /usr/bin/composer
+
+
+
+
+
+
+#set timezone
+echo -e "${NC}"
+echo -e "${red}Changing timezone (default Europe/Lisbon)"
+echo -e "${NC}"
+
+
+sed -i "s@;date.timezone =@${timezone}@g" /etc/php/8.1/fpm/php.ini
+sed -i "s@;date.timezone =@${timezone}@g" /etc/php/8.1/cli/php.ini
+timedatectl set-timezone Europe/Lisbon
+
+echo -e "${NC}"
+echo -e "${red}Timezone changed, grepping the results:"
+echo -e "${NC}"
+echo -e "${NC}$(cat /etc/php/8.1/fpm/php.ini | grep Europe/Lisbon)"
+echo -e "${NC}$(cat /etc/php/8.1/cli/php.ini | grep Europe/Lisbon)"
+echo -e "${NC}"
+
+
+
+#Enable lnms command completion
+echo -e "${NC}"
+echo -e "${red}Activating lnms command completion"
+echo -e "${NC}"
+
+ln -s /opt/librenms/lnms /usr/bin/lnms
+cp /opt/librenms/misc/lnms-completion.bash /etc/bash_completion.d/
+
+echo -e "${NC}"
+echo -e "${red}Done, grepping the results:"
+echo -e "${NC}$(ls /etc/bash_completion.d/ | grep "lnms-completion.bash")"
+echo -e "${NC}"
+
+
+
+
+
+
+#configure snmpd
+echo -e "${NC}"
+echo -e "${red}Configuring SNMPD"
+echo -e "${NC}"
+
+cp /opt/librenms/snmpd.conf.example /etc/snmp/snmpd.conf
+sed -i "s/RANDOMSTRINGGOESHERE/${snmpcommunity}/g" /etc/snmp/snmpd.conf
+curl -o /usr/bin/distro https://raw.githubusercontent.com/librenms/librenms-agent/master/snmp/distro
+chmod +x /usr/bin/distro
+systemctl enable snmpd
+systemctl restart snmpd
+
+echo -e "${NC}"
+echo -e "${red}SNMPD Configured:"
+echo -e "${NC}$(cat /etc/snmp/snmpd.conf | grep $snmpcommunity)"
+echo -e "${NC}"
+
+
+
+
+
+#Cron Job
+#echo -e "${NC}"
+#echo -e "${red}Adding cronjob"
+#echo -e "${NC}"
+
+#cp /opt/librenms/dist/librenms.cron /etc/cron.d/librenms
+
+#echo -e "${NC}"
+#echo -e "${red}CronJob activated, grepping the results:"
+#echo -e "${NC}$(ls /etc/cron.d | grep librenms)"
+#echo -e "${NC}"
+
+
+
+
+
+#Enable the scheduler
+echo -e "${NC}"
+echo -e "${red}Activating scheduler and copying config.php"
+echo -e "${NC}"
+
+cp /opt/librenms/dist/librenms-scheduler.service /opt/librenms/dist/librenms-scheduler.timer /etc/systemd/system/
+systemctl enable librenms-scheduler.timer
+systemctl start librenms-scheduler.timer
+cp /opt/librenms/config.php.default /opt/librenms/config.php
+
+echo -e "${NC}"
+echo -e "${red}Done, grepping the results:"
+echo -e "${NC}$(ls /etc/systemd/system/ | grep librenms-scheduler.service && ls /etc/systemd/system/ | grep librenms-scheduler.timer && ls /opt/librenms | grep config.php)"
+echo -e "${NC}"
+
+
+
+
+
+#Dispatcher Service
+echo -e "${NC}"
+echo -e "${red}Activating Dispatcher Service"
+echo -e "${NC}"
+
+su - librenms -c 'pip3 install -r requirements.txt'
+cp /opt/librenms/misc/librenms.service /etc/systemd/system/librenms.service && systemctl enable --now librenms.service
+
+
+
+
+
+
+#Copy logrotate config
+echo -e "${NC}"
+echo -e "${red}Copying logrotate config"
+echo -e "${NC}"
+
+cp /opt/librenms/misc/librenms.logrotate /etc/logrotate.d/librenms
+
+echo -e "${NC}"
+echo -e "${red}Logrotate copied, grepping the results:"
+echo -e "${NC}$(ls /etc/logrotate.d/ | grep librenms)"
+echo -e "${NC}"
+
+
+
+
+#Web Installer
+echo -e "${NC}"
+echo -e "${red}Changing permissions and changing .env"
+echo -e "${NC}"
+
+chown librenms:librenms /opt/librenms/config.php
+
+
+
+
+
+#Alterar o .env
+sed -i "s/#DB_HOST=/DB_HOST=${addressdb}/g" /opt/librenms/.env
+sed -i "s/#DB_DATABASE=/DB_DATABASE=librenms/g" /opt/librenms/.env
+sed -i "s/#DB_USERNAME=/DB_USERNAME=${userdb}/g" /opt/librenms/.env
+sed -i "s/#DB_PASSWORD=/DB_PASSWORD=${passdb}/g" /opt/librenms/.env
+sed -i "7iREDIS_HOST=${addressredis}" /opt/librenms/.env
+sed -i "8iREDIS_PORT=${portredis}" /opt/librenms/.env
+sed -i "9iREDIS_DB=0" /opt/librenms/.env
+sed -i "10iCACHE_DRIVER=redis" /opt/librenms/.env
+sed -i "s|APP_KEY=base64:|APP_KEY=base64:${appkey}\n\#|g" /opt/librenms/.env
+
+echo -e "${NC}"
+echo -e "${red}Done, grepping .env:"
+echo -e "${NC}$(cat /opt/librenms/.env | grep "DB_" && cat /opt/librenms/.env | grep "REDIS")"
+echo -e "${NC}"
+
+
+
+
+
+#Adding Distributed poller
+echo -e "${NC}"
+echo -e "${red}Adding Distributed poller to config.php"
+echo -e "${NC}"
+
+tee -a /opt/librenms/config.php << EOF
+
+#DISTRIBUTED POLLING
+\$config['distributed_poller']                    = true;            # Set to true to enable distributed polling
+\$config['distributed_poller_name']               = php_uname('n');  # Uniquely identifies the poller instance
+\$config['distributed_poller_group']              = $pollergroup;    # Which group to poll
+EOF
+touch /etc/cron.d/librenms && echo "*    *    * * *   librenms    cd /opt/librenms/ && php artisan schedule:run >> /dev/null 2>&1 >> /etc/cron.d/librenms"
+
+echo -e "${red}Added Distributed poller, grepping the results:"
+echo -e "${NC}"
+echo -e "${NC}$(tail -4 /opt/librenms/config.php)"
+echo -e "${NC}"
+
+
+echo -e "${red}ALL DONE"
+echo -e "${NC}"
