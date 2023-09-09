@@ -445,6 +445,7 @@ echo -e "${NC}"
 echo -e "${red}Adding config to REDIS"
 echo -e "${NC}"
 sed -i "s/bind 127.0.0.1 ::1/bind ${addressredis}/g" /etc/redis/redis.conf
+sed -i "s/port 6379/port ${portredis}/g" /etc/redis/redis.conf
 systemctl restart redis-server
 
 echo -e "${NC}"
