@@ -1,27 +1,41 @@
 #!/bin/bash
+red='\033[0;31m'
+NC='\033[0m'
+timezone="date.timezone = Europe/Lisbon" #Change this to your zone
 
-echo Escreve a rede para aceder à base de dados, Exemplo: 192.168.34.%
+#THIS SCRIPT INSTALLS LIBRENMS STANDALONE FOLLOWING THE DOC ALONE (EXCEPT CRON JOBS, THEY ARE REPLACED BY THE DISPATCHER SERVICE).
+#WHICH MEANS ITS NOT POLLER AWARE.
+
+echo -e "${NC}"
+echo -e "${red}Write the network that will be able to access the database, ex: 192.168.34.%"
+echo -e "${NC}"
 read netdb
-
-echo Escreve o username da base de dados, Exemplo: agora_db
+echo -e "${NC}"
+echo -e "${red}Write database username. On LibreNMS Docs the default would be  librenms"
+echo -e "${NC}"
 read userdb
-
-echo Escreve a password do utilizador na resposta anterior
+echo -e "${NC}"
+echo -e "${red}Write the database password"
+echo -e "${NC}"
 read passdb
-
-echo Escreve o IP do servidor
+echo -e "${NC}"
+echo -e "${red}Write Local Server IP"
+echo -e "${NC}"
 read bindaddress
-
-echo Escreve a comunidade de SNMP
+echo -e "${NC}"
+echo -e "${red}Write SNMP Community"
+echo -e "${NC}"
 read snmpcommunity
-
+echo -e "${NC}"
 
 
 
 
 
 #apt install packages
-echo Updating and installing packages
+echo -e "${NC}"
+echo -e "${red}Updating and installing packages"
+echo -e "${NC}"
 
 apt update
 apt install acl curl fping git graphviz imagemagick mariadb-client mariadb-server mtr-tiny nginx-full nmap php-cli php-curl php-fpm php-gd php-gmp php-json php-mbstring php-mysql php-snmp php-xml php-zip rrdtool snmp snmpd whois unzip python3-pymysql python3-dotenv python3-redis python3-setuptools python3-systemd python3-pip -y
@@ -32,7 +46,9 @@ apt install acl curl fping git graphviz imagemagick mariadb-client mariadb-serve
 
 
 #add librenms user
-echo A adicionar e instalar o librenms...
+echo -e "${NC}"
+echo -e "${red}Adding and Installing LibreNMS..."
+echo -e "${NC}"
 
 useradd librenms -d /opt/librenms -M -r -s "$(which bash)"
 
@@ -44,9 +60,12 @@ useradd librenms -d /opt/librenms -M -r -s "$(which bash)"
 #install librenms through github
 cd /opt && git clone https://github.com/librenms/librenms.git
 
-echo "User Librenms adicionado e instalado, a dar grep dos resultados (Se estiver em branco é porque algo deu errado):"
-echo "$(ls /opt/ | grep librenms)"
-echo "$(cat /etc/passwd | grep librenms)"
+echo -e "${NC}"
+echo -e "${red}User Librenms added and LibreNMS installed:"
+echo -e "${NC}"
+echo -e "${NC}$(ls /opt/ -alps | grep librenms)"
+echo -e "${NC}$(cat /etc/passwd | grep librenms)"
+echo -e "${NC}"
 
 
 
@@ -54,15 +73,20 @@ echo "$(cat /etc/passwd | grep librenms)"
 
 
 #setting permissions
-echo "A alterar as permissões da pasta"
+echo -e "${NC}"
+echo -e "${red}Changing folder permissions"
+echo -e "${NC}"
 
 chown -R librenms:librenms /opt/librenms
 chmod 771 /opt/librenms
 setfacl -d -m g::rwx /opt/librenms/rrd /opt/librenms/logs /opt/librenms/bootstrap/cache/ /opt/librenms/storage/
 setfacl -R -m g::rwx /opt/librenms/rrd /opt/librenms/logs /opt/librenms/bootstrap/cache/ /opt/librenms/storage/
 
-echo "Permissioes alteradas, a dar grep dos resultados (Se estiver em branco é porque algo deu errado):"
-echo "$(ls /opt/librenms)"
+echo -e "${NC}"
+echo -e "${red}Permissions changed, grepping the results:"
+echo -e "${NC}"
+echo -e "${red}$(ls /opt/librenms)"
+echo -e "${NC}"
 
 
 
@@ -70,7 +94,9 @@ echo "$(ls /opt/librenms)"
 
 
 #installing dependencies
-echo A instalar as dependecias e o composer
+echo -e "${NC}"
+echo -e "${red}Installing dependencies"
+echo -e "${NC}"
 
 su - librenms -c './scripts/composer_wrapper.php install'
 wget https://getcomposer.org/composer-stable.phar
@@ -83,24 +109,30 @@ chmod +x /usr/bin/composer
 
 
 #set timezone
-echo A mudar a timezone
+echo -e "${NC}"
+echo -e "${red}Changing timezone (default Europe/Lisbon)"
+echo -e "${NC}"
 
-timezone="date.timezone = Europe/Lisbon"
+
 sed -i "s@;date.timezone =@${timezone}@g" /etc/php/8.1/fpm/php.ini
-sed -i "s@;date.timezone =@${timezone}@g"  /etc/php/8.1/cli/php.ini
+sed -i "s@;date.timezone =@${timezone}@g" /etc/php/8.1/cli/php.ini
 timedatectl set-timezone Europe/Lisbon
 
-echo "Timezone alterada, a dar grep dos resultados:"
-echo "$(cat /etc/php/8.1/fpm/php.ini | grep Europe/Lisbon)"
-echo "$(cat /etc/php/8.1/cli/php.ini | grep Europe/Lisbon)"
-
+echo -e "${NC}"
+echo -e "${red}Timezone changed, grepping the results:"
+echo -e "${NC}"
+echo -e "${red}$(cat /etc/php/8.1/fpm/php.ini | grep Europe/Lisbon)"
+echo -e "${red}$(cat /etc/php/8.1/cli/php.ini | grep Europe/Lisbon)"
+echo -e "${NC}"
 
 
 
 
 
 #Configure MariaDB
+echo -e "${NC}"
 echo A configurar MariaDB
+echo -e "${NC}"
 
 sed -i "10iinnodb_file_per_table=1" /etc/mysql/mariadb.conf.d/50-server.cnf
 sed -i "11ilower_case_table_names=0" /etc/mysql/mariadb.conf.d/50-server.cnf
@@ -113,20 +145,25 @@ mysql -Bse "CREATE DATABASE librenms CHARACTER SET utf8mb4 COLLATE utf8mb4_unico
 CREATE USER '$userdb'@'$netdb' IDENTIFIED BY '$passdb';
 GRANT ALL PRIVILEGES ON librenms.* TO '$userdb'@'$netdb'"
 
-echo "MariaDB configurada, a dar grep do resultado:"
-echo "User:"
-echo "$(mysql -Be "SELECT host, user FROM mysql.user;SHOW databases;")"
-echo ""
-echo "Database:"
-echo "$(mysql -Be "SHOW databases;")"
-echo "$(cat /etc/mysql/mariadb.conf.d/50-server.cnf | grep "innodb_file_per_table=1")"
-echo "$(cat /etc/mysql/mariadb.conf.d/50-server.cnf | grep "lower_case_table_names=0")"
-echo "$(cat /etc/mysql/mariadb.conf.d/50-server.cnf | grep $bindaddress)"
-
+echo -e "${NC}"
+echo -e "${red}MariaDB configurada, a dar grep do resultado:"
+echo -e "${red}User:"
+echo -e "${NC}$(mysql -Be "SELECT host, user FROM mysql.user;SHOW databases;")"
+echo -e "${NC}"
+echo -e "${red}Database:"
+echo -e "${NC}$(mysql -Be "SHOW databases;")"
+echo -e "${NC}"
+echo -e "${red}50-server.cnf added the following:"
+echo -e "${NC}$(cat /etc/mysql/mariadb.conf.d/50-server.cnf | grep "innodb_file_per_table=1")"
+echo -e "${NC}$(cat /etc/mysql/mariadb.conf.d/50-server.cnf | grep "lower_case_table_names=0")"
+echo -e "${NC}$(cat /etc/mysql/mariadb.conf.d/50-server.cnf | grep $bindaddress)"
+echo -e "${NC}"
 
 
 #Configure PHP-FPM
-echo A configurar PHP-FPM
+echo -e "${NC}"
+echo -e "${red}Configuring PHP-FPM"
+echo -e "${NC}"
 
 cp /etc/php/8.1/fpm/pool.d/www.conf /etc/php/8.1/fpm/pool.d/librenms.conf
 sed -i "4s/\[www\]/[librenms]/g" /etc/php/8.1/fpm/pool.d/librenms.conf
@@ -134,19 +171,22 @@ sed -i "s/user = www-data/user = librenms/g" /etc/php/8.1/fpm/pool.d/librenms.co
 sed -i "s/group = www-data/group = librenms/g" /etc/php/8.1/fpm/pool.d/librenms.conf
 sed -i "s/listen = \/run\/php\/php8.1-fpm.sock/listen = \/run\/php-fpm-librenms.sock/g" /etc/php/8.1/fpm/pool.d/librenms.conf
 
-echo "Configurado, a dar grep dos resultados:"
-echo "$(cat /etc/php/8.1/fpm/pool.d/librenms.conf | grep "\[librenms\]")"
-echo "$(cat /etc/php/8.1/fpm/pool.d/librenms.conf | grep "user = librenms")"
-echo "$(cat /etc/php/8.1/fpm/pool.d/librenms.conf | grep "group = librenms")"
-echo "$(cat /etc/php/8.1/fpm/pool.d/librenms.conf | grep "listen = /run/php-fpm-librenms.sock")"
-
+echo -e "${NC}"
+echo -e "${red}Configured, grepping the results:"
+echo -e "${NC}$(cat /etc/php/8.1/fpm/pool.d/librenms.conf | grep "\[librenms\]")"
+echo -e "${NC}$(cat /etc/php/8.1/fpm/pool.d/librenms.conf | grep "user = librenms")"
+echo -e "${NC}$(cat /etc/php/8.1/fpm/pool.d/librenms.conf | grep "group = librenms")"
+echo -e "${NC}$(cat /etc/php/8.1/fpm/pool.d/librenms.conf | grep "listen = /run/php-fpm-librenms.sock")"
+echo -e "${NC}"
 
 
 
 
 
 #Configure Web Server
-echo A configurar Web Server
+echo -e "${NC}"
+echo -e "${red}Adding Web Page"
+echo -e "${NC}"
 
 tee -a /etc/nginx/conf.d/librenms.conf << END
 server {
@@ -159,7 +199,7 @@ server {
  gzip on;
  gzip_types text/css application/javascript text/javascript application/x-javascript image/svg+xml text/plain text/xsd text/xsl text/xml image/x-icon;
  location / {
-  try_files $uri $uri/ /index.php?$query_string;
+  try_files \$uri \$uri/ /index.php?\$query_string;
  }
  location ~ [^/]\.php(/|$) {
   fastcgi_pass unix:/run/php-fpm-librenms.sock;
@@ -177,8 +217,9 @@ rm /etc/nginx/sites-enabled/default
 systemctl restart nginx
 systemctl restart php8.1-fpm
 
-echo "WebServer configurado"
-
+echo -e "${NC}"
+echo -e "${red}WebServer configurado"
+echo -e "${NC}"
 
 
 
@@ -186,13 +227,17 @@ echo "WebServer configurado"
 
 
 #Enable lnms command completion
-echo Ativando lnms command completion
+echo -e "${NC}"
+echo -e "${red}Activating lnms command completion"
+echo -e "${NC}"
 
 ln -s /opt/librenms/lnms /usr/bin/lnms
 cp /opt/librenms/misc/lnms-completion.bash /etc/bash_completion.d/
 
-echo "Concluido, a dar grep do resultado:"
-echo "$(ls /etc/bash_completion.d/ | grep "lnms-completion.bash")"
+echo -e "${NC}"
+echo -e "${red}Done, grepping the results:"
+echo -e "${NC}$(ls /etc/bash_completion.d/ | grep "lnms-completion.bash")"
+echo -e "${NC}"
 
 
 
@@ -200,7 +245,9 @@ echo "$(ls /etc/bash_completion.d/ | grep "lnms-completion.bash")"
 
 
 #configure snmpd
-echo Configurando snmpd
+echo -e "${NC}"
+echo -e "${red}Configuring SNMPD"
+echo -e "${NC}"
 
 cp /opt/librenms/snmpd.conf.example /etc/snmp/snmpd.conf
 sed -i "s/RANDOMSTRINGGOESHERE/${snmpcommunity}/g" /etc/snmp/snmpd.conf
@@ -209,45 +256,54 @@ chmod +x /usr/bin/distro
 systemctl enable snmpd
 systemctl restart snmpd
 
-echo "snmpd configurado, a dar grep do resultado:"
-echo "$(cat /etc/snmp/snmpd.conf | grep $snmpcommunity)"
-
+echo -e "${NC}"
+echo -e "${red}SNMPD Configured:"
+echo -e "${NC}$(cat /etc/snmp/snmpd.conf | grep $snmpcommunity)"
+echo -e "${NC}"
 
 
 
 
 
 #Cron Job
-#echo A ativar cronjob
+#echo -e "${NC}"
+#echo -e "${red}Adding cronjob"
+#echo -e "${NC}"
 
 #cp /opt/librenms/dist/librenms.cron /etc/cron.d/librenms
 
-#echo "CronJob ativado, a dar grep do resultado"
-#echo "$(ls /etc/cron.d | grep librenms)"
-
+#echo -e "${NC}"
+#echo -e "${red}CronJob activated, grepping the results:"
+#echo -e "${NC}$(ls /etc/cron.d | grep librenms)"
+#echo -e "${NC}"
 
 
 
 
 
 #Enable the scheduler
-echo "A ativar o scheduler e criar config.php"
+echo -e "${NC}"
+echo -e "${red}Activating scheduler and copying config.php"
+echo -e "${NC}"
 
 cp /opt/librenms/dist/librenms-scheduler.service /opt/librenms/dist/librenms-scheduler.timer /etc/systemd/system/
 systemctl enable librenms-scheduler.timer
 systemctl start librenms-scheduler.timer
 cp /opt/librenms/config.php.default /opt/librenms/config.php
 
-echo "Scheduler ativado e config criado, a dar grep do resultado:"
-echo "$(ls /etc/systemd/system/ | grep librenms-scheduler.service && ls /etc/systemd/system/ | grep librenms-scheduler.timer && ls /opt/librenms | grep config.php)"
-
+echo -e "${NC}"
+echo -e "${red}Done, grepping the results:"
+echo -e "${NC}$(ls /etc/systemd/system/ | grep librenms-scheduler.service && ls /etc/systemd/system/ | grep librenms-scheduler.timer && ls /opt/librenms | grep config.php)"
+echo -e "${NC}"
 
 
 
 
 
 #Dispatcher Service
-echo Ativando o Dispatcher Service
+echo -e "${NC}"
+echo -e "${red}Activating Dispatcher Service"
+echo -e "${NC}"
 
 su - librenms -c 'pip3 install -r requirements.txt'
 cp /opt/librenms/misc/librenms.service /etc/systemd/system/librenms.service && systemctl enable --now librenms.service
@@ -258,18 +314,25 @@ cp /opt/librenms/misc/librenms.service /etc/systemd/system/librenms.service && s
 
 
 #Copy logrotate config
-echo A copiar o logrotate config
+echo -e "${NC}"
+echo -e "${red}Copying logrotate config"
+echo -e "${NC}"
 
 cp /opt/librenms/misc/librenms.logrotate /etc/logrotate.d/librenms
 
-echo "Logrotate copiado, a dar grep do resultado:"
-echo "$(ls /etc/logrotate.d/ | grep librenms)"
-
+echo -e "${NC}"
+echo -e "${red}Logrotate copied, grepping the results:"
+echo -e "${NC}$(ls /etc/logrotate.d/ | grep librenms)"
+echo -e "${NC}"
 
 
 
 
 #Web Installer
+echo -e "${NC}"
+echo -e "${red}Changing permissions and changing .env"
+echo -e "${NC}"
+
 chown librenms:librenms /opt/librenms/config.php
 
 #Alterar o .env
@@ -277,3 +340,7 @@ sed -i "s/#DB_HOST=/DB_HOST=${bindaddress}/g" /opt/librenms/.env
 sed -i "s/#DB_DATABASE=/DB_DATABASE=librenms/g" /opt/librenms/.env
 sed -i "s/#DB_USERNAME=/DB_USERNAME=${userdb}/g" /opt/librenms/.env
 sed -i "s/#DB_PASSWORD=/DB_PASSWORD=${passdb}/g" /opt/librenms/.env
+echo -e "${NC}$(cat /opt/librenms/.env | grep "DB_")"
+echo -e "${NC}"
+echo -e "${red}ALL DONE"
+echo -e "${NC}"
