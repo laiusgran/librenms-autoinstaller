@@ -72,7 +72,7 @@ cd /opt && git clone https://github.com/librenms/librenms.git
 echo -e "${NC}"
 echo -e "${red}User Librenms added and LibreNMS installed:"
 echo -e "${NC}"
-echo -e "${NC}$(ls /opt/ -alps | grep librenms)"
+echo -e "${NC}$(ls -alps /opt/ | grep librenms)"
 echo -e "${NC}$(cat /etc/passwd | grep librenms)"
 echo -e "${NC}"
 
