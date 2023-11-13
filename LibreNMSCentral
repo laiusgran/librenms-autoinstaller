@@ -98,7 +98,7 @@ setfacl -R -m g::rwx /opt/librenms/rrd /opt/librenms/logs /opt/librenms/bootstra
 echo -e "${NC}"
 echo -e "${red}Permissions changed, grepping the results:"
 echo -e "${NC}"
-echo -e "${NC}$(ls /opt/librenms)"
+echo -e "${NC}$(ls -l /opt/librenms)"
 echo -e "${NC}"
 
 
@@ -144,7 +144,7 @@ echo -e "${NC}"
 
 #Configure MariaDB
 echo -e "${NC}"
-echo A configurar MariaDB
+echo -e "${red}Configuring MariaDB:"
 echo -e "${NC}"
 
 sed -i "10iinnodb_file_per_table=1" /etc/mysql/mariadb.conf.d/50-server.cnf
@@ -159,9 +159,9 @@ CREATE USER '$userdb'@'$netdb' IDENTIFIED BY '$passdb';
 GRANT ALL PRIVILEGES ON librenms.* TO '$userdb'@'$netdb'"
 
 echo -e "${NC}"
-echo -e "${red}MariaDB configurada, a dar grep do resultado:"
+echo -e "${red}MariaDB configured, grepping the results:"
 echo -e "${red}User:"
-echo -e "${NC}$(mysql -Be "SELECT host, user FROM mysql.user;SHOW databases;")"
+echo -e "${NC}$(mysql -Be "SELECT host, user FROM mysql.user;")"
 echo -e "${NC}"
 echo -e "${red}Database:"
 echo -e "${NC}$(mysql -Be "SHOW databases;")"
@@ -231,7 +231,7 @@ systemctl restart nginx
 systemctl restart php8.1-fpm
 
 echo -e "${NC}"
-echo -e "${red}WebServer configurado"
+echo -e "${red}WebServer configured"
 echo -e "${NC}"
 
 
@@ -303,6 +303,7 @@ cp /opt/librenms/dist/librenms-scheduler.service /opt/librenms/dist/librenms-sch
 systemctl enable librenms-scheduler.timer
 systemctl start librenms-scheduler.timer
 cp /opt/librenms/config.php.default /opt/librenms/config.php
+chown librenms:librenms /opt/librenms/config.php
 
 echo -e "${NC}"
 echo -e "${red}Done, grepping the results:"
@@ -343,12 +344,11 @@ echo -e "${NC}"
 
 
 
-#Web Installer
+#configure env file
 echo -e "${NC}"
-echo -e "${red}Changing permissions and changing .env"
+echo -e "${red}Changing .env"
 echo -e "${NC}"
 
-chown librenms:librenms /opt/librenms/config.php
 
 #Alterar o .env
 sed -i "s/#DB_HOST=/DB_HOST=${addressdb}/g" /opt/librenms/.env
@@ -397,7 +397,7 @@ echo -e "${NC}$(tail -4 /opt/librenms/config.php)"
 echo -e "${NC}"
 
 
-lnms config:set distributed_poller true
+su - librenms -c 'lnms config:set distributed_poller true'
 
 
 
